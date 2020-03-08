@@ -1,0 +1,7 @@
+Keyword           - int
+Identifier        - e25
+Punctuator        - ;
+Punctuator        - ;
+String_Literal    - "  /*ah'h'*/"
+Error             - Position in file: 121, Line: 12 - '\'"'
+State: (Character open)
