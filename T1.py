@@ -130,7 +130,7 @@ s_string_newline             = State("String newline",                      toke
 # s_number_sign_minus          = State("Number sign minus")
 # s_number_sign_plus           = State("Number sign plus")
 s_number_integer             = State("Number integer",   end=True, token_type=Token.Type.Numeric_Literal)
-s_number_real_point          = State("Number real point")
+s_number_real_point          = State("Number real point",end=True, token_type=Token.Type.Operator)
 s_number_real                = State("Number real",      end=True, token_type=Token.Type.Numeric_Literal)
 s_number_suffixed            = State("Number suffixed",  end=True, token_type=Token.Type.Numeric_Literal, dead_end=True)
 s_number_exponent_e          = State("Number exponent e")
@@ -265,6 +265,8 @@ t_number_exponent            = Transition(s_number_exponent_e,    s_number_expon
 t_number_exponent_sign       = Transition(s_number_exponent_e,    s_number_exponent_sign, "x == '-' or x == '+'")
 t_number_exponent_signed     = Transition(s_number_exponent_sign, s_number_exponent,      "x.isdigit()")
 t_number_exponent_exponent   = Transition(s_number_exponent,      s_number_exponent,      "x.isdigit()")
+t_number_integer_e_suffix    = Transition(s_number_exponent,      s_number_suffixed,      "x in Scanner.NUMBER_SUFFIXES")
+t_number_real_e_suffix       = Transition(s_number_exponent,      s_number_suffixed,      "x in Scanner.NUMBER_SUFFIXES")
 
 state_list = [
     s_start, s_punctuators,
@@ -293,6 +295,7 @@ transition_list = [
     t_character_open, t_character, t_character_close, t_character_escape_backslash, t_character_escape, t_character_escape_close,
     t_string_open, t_string_close_empty, t_string, t_string_content, t_string_close, t_string_escape_first, t_string_escape_backslash, t_string_escape, t_string_escape_close, t_string_escape_back, t_string_escape_back_escape, t_string_newline, t_string_newline_back, t_string_newline_back_escape, t_string_newline_close,
     t_number_integer, t_number_real_point, t_number_sign_minus_integer, t_number_sign_plus_integer, t_number_sign_minus_real, t_number_sign_plus_real, t_number_integer_integer, t_number_integer_point, t_number_real_point_real, t_number_real_real, t_number_integer_suffix, t_number_real_suffix, t_number_integer_exponent_e, t_number_real_exponent_e, t_number_exponent, t_number_exponent_sign, t_number_exponent_signed, t_number_exponent_exponent,
+    t_number_integer_e_suffix, t_number_real_e_suffix,
 ]
 
 
@@ -308,6 +311,7 @@ class Scanner:
         "struct",   "switch",       "typedef",  "union",    "unsigned",     "void",         "volatile",     "while",
     ]
     OPERATORS = [
+        ".",
         "+",    "-",    "*",    "/",    "%",    "++",   "--",                                   # Arithmetic Operators
         "==",   "!=",   ">",    "<",    ">=",   "<=",                                           # Relational Operators
         "&&",   "||",   "!",                                                                    # Logical Operators
@@ -323,7 +327,7 @@ class Scanner:
     ]
     VALID_FIRST_CHARACTERS    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
     VALID_CHARACTERS          = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"
-    VALID_STRING_CHARACTERS   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789 ~!@#$%^&*()_+{}|:<>?[];',./'"
+    VALID_STRING_CHARACTERS   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789 ~!@#$%^&*()_-+{}|:<>?[];',./'"
     INVALID_STRING_CHARACTERS = "\\\"\n"
     VALID_ESCAPE_CHARACTERS   = "abefnrtv\\\'\"?\""
     NUMBER_SUFFIXES           = "lLfF"
@@ -350,6 +354,14 @@ class Scanner:
         return self.string_table.index(string)
 
     def make_token(self):
+        if self.current_token_value == '' and self.current_state.token_type == Token.Type.Comment:
+            self.current_token_value += self.current_character
+            return Token(Token.Type.Error, "Position in file: {}, Line: {}".format(
+                    self.token_start_position, #self.file.tell(),
+                    self.token_line_number, #self.line_number,
+                    repr(self.current_token_value) + "\nState: " + str(self.current_state)
+                    ))
+
         if self.current_character == '' and self.current_token_value == '':
             return 'EOF'
         else:
@@ -439,8 +451,9 @@ class Scanner:
 s = Scanner(
     # "testulet.txt",
     # "test_c1.txt",
-    "test_c2.txt",
+    # "test_c2.txt",
     # "aici.txt",
+    "p1.c",
     state_list,
     transition_list
     )
